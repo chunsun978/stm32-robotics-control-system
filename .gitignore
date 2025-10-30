@@ -72,7 +72,8 @@ node_modules/
 
 # Third-party libraries (exclude source files)
 Drivers/CMSIS/DSP/Source/
-Drivers/STM32F4xx_HAL_Driver/Src/
+# Note: HAL Driver sources are needed for CI/CD builds
+# Drivers/STM32F4xx_HAL_Driver/Src/
 
 # Project-specific files (optional development utilities)
 .mxproject
