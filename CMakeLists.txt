@@ -49,14 +49,19 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-    Core/Src/Led.cpp
-    Core/Src/cpp_main.cpp
+    # Application modules
+    Core/Src/modules/app/cpp_main.cpp
+    Core/Src/modules/hal/Led.cpp
+    # Motor control module (add motor files here later)
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    # Module include paths
+    Core/Inc/modules
+    Core/Inc/modules/app
+    Core/Inc/modules/hal
+    Core/Inc/modules/motor
 )
 
 # Add project symbols (macros)
