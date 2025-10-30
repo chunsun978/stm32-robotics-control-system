@@ -2,9 +2,9 @@ name: Code Quality
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, dev ]
 
 jobs:
   static-analysis:
@@ -13,53 +13,103 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
     
-    - name: Install analysis tools
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y cppcheck clang-format
     
     - name: Run cppcheck
       run: |
-        cppcheck --version
-        cppcheck \
-          --enable=warning,style,performance,portability \
-          --error-exitcode=0 \
-          --suppress=missingIncludeSystem \
-          --suppress=unmatchedSuppression \
-          --inline-suppr \
-          -I Core/Inc \
-          --xml \
-          Core/Src/ 2> cppcheck-report.xml
+        cppcheck --enable=all \
+                 --inconclusive \
+                 --suppress=missingIncludeSystem \
+                 --suppress=unmatchedSuppression \
+                 --suppress=unusedFunction \
+                 --inline-suppr \
+                 --std=c++17 \
+                 --language=c++ \
+                 --platform=unix32 \
+                 --error-exitcode=0 \
+                 --xml \
+                 --output-file=cppcheck-report.xml \
+                 Core/Src/modules/ Core/Inc/modules/ 2>&1 || true
         
-        # Display results
-        cppcheck \
-          --enable=warning,style,performance,portability \
-          --suppress=missingIncludeSystem \
-          --suppress=unmatchedSuppression \
-          -I Core/Inc \
-          Core/Src/
-      continue-on-error: true
-    
-    - name: Check C++ file formatting (non-blocking)
-      run: |
-        echo "Checking code formatting..."
-        find Core/Inc Core/Src -name '*.cpp' -o -name '*.hpp' | while read file; do
-          if [ -f "$file" ]; then
-            clang-format --dry-run --Werror "$file" 2>&1 || echo "::warning file=$file::Formatting issues detected"
+        # Generate human-readable report
+        if [ -f cppcheck-report.xml ]; then
+          echo "## Static Analysis Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          ERRORS=$(grep -c 'severity="error"' cppcheck-report.xml || echo "0")
+          WARNINGS=$(grep -c 'severity="warning"' cppcheck-report.xml || echo "0")
+          STYLE=$(grep -c 'severity="style"' cppcheck-report.xml || echo "0")
+          echo "- Errors: ${ERRORS}" >> $GITHUB_STEP_SUMMARY
+          echo "- Warnings: ${WARNINGS}" >> $GITHUB_STEP_SUMMARY
+          echo "- Style issues: ${STYLE}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$ERRORS" -eq "0" ] && [ "$WARNINGS" -eq "0" ]; then
+            echo "✅ **No critical issues found!**" >> $GITHUB_STEP_SUMMARY
           fi
-        done
-      continue-on-error: true
+        fi
     
-    - name: Upload analysis results
-      uses: actions/upload-artifact@v4
+    - name: Upload cppcheck report
       if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: static-analysis-results
+        name: cppcheck-report
         path: cppcheck-report.xml
-        retention-days: 7
+        retention-days: 30
+    
+    - name: Check code formatting
+      run: |
+        echo "## Code Formatting Check" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check if any C++ files need formatting
+        FORMAT_NEEDED=0
+        for file in $(find Core/Src/modules Core/Inc/modules -name "*.cpp" -o -name "*.hpp"); do
+          clang-format --dry-run --Werror $file 2>&1 || FORMAT_NEEDED=1
+        done
+        
+        if [ $FORMAT_NEEDED -eq 0 ]; then
+          echo "✅ All C++ files are properly formatted" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Some files may need formatting" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run \`clang-format -i Core/Src/modules/**/*.cpp Core/Inc/modules/**/*.hpp\` to fix" >> $GITHUB_STEP_SUMMARY
+        fi
   
-  code-metrics:
+  complexity-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install lizard
+      run: |
+        pip install lizard
+    
+    - name: Run complexity analysis
+      run: |
+        lizard -l cpp -w -o lizard-report.txt Core/Src/modules/ Core/Inc/modules/ || true
+        
+        echo "## Code Complexity Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat lizard-report.txt | head -20 >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+    
+    - name: Upload complexity report
+      uses: actions/upload-artifact@v4
+      with:
+        name: complexity-report
+        path: lizard-report.txt
+        retention-days: 30
+  
+  line-count:
     runs-on: ubuntu-latest
     
     steps:
@@ -68,22 +118,14 @@ jobs:
     
     - name: Count lines of code
       run: |
-        echo "### Code Statistics" > code-stats.txt
-        echo "" >> code-stats.txt
-        echo "#### C/C++ Source Files:" >> code-stats.txt
-        find Core/Src -name '*.c' -o -name '*.cpp' | xargs wc -l | tail -1 >> code-stats.txt
-        echo "" >> code-stats.txt
-        echo "#### C/C++ Header Files:" >> code-stats.txt
-        find Core/Inc -name '*.h' -o -name '*.hpp' | xargs wc -l | tail -1 >> code-stats.txt
-        echo "" >> code-stats.txt
-        echo "#### All Files:" >> code-stats.txt
-        find Core -name '*.c' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' | xargs wc -l | tail -1 >> code-stats.txt
-        cat code-stats.txt
-    
-    - name: Upload code metrics
-      uses: actions/upload-artifact@v4
-      with:
-        name: code-metrics
-        path: code-stats.txt
-        retention-days: 7
-
+        echo "## Lines of Code" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### C++ Code" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        find Core/Src/modules Core/Inc/modules -name "*.cpp" -o -name "*.hpp" | xargs wc -l | tail -1 >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### All Source Files" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        find Core -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" | xargs wc -l | tail -1 >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

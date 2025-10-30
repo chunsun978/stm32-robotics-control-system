@@ -52,7 +52,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Application modules
     Core/Src/modules/app/cpp_main.cpp
     Core/Src/modules/hal/Led.cpp
-    # Motor control module
+    # Motor control module (C++ classes)
+    Core/Src/modules/motor/StepperMotor.cpp
+    Core/Src/modules/motor/MotorStateMachine.cpp
+    Core/Src/modules/motor/SCurveProfile.cpp
+    Core/Src/modules/motor/MotionPlanner.cpp
     Core/Src/modules/motor/motor_control.cpp
 )
 

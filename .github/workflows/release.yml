@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0  # Get full history for changelog
+    
+    - name: Install ARM GCC toolchain
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+        sudo apt-get install -y cmake ninja-build
+    
+    - name: Get version from tag
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    - name: Build Release firmware
+      run: |
+        cmake --preset Release
+        cmake --build build/Release --parallel
+    
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Get memory usage
+        FLASH_USED=$(arm-none-eabi-size build/Release/stm32-robotics-control.elf | tail -n 1 | awk '{print $1+$2}')
+        RAM_USED=$(arm-none-eabi-size build/Release/stm32-robotics-control.elf | tail -n 1 | awk '{print $2+$3}')
+        
+        # Create release notes
+        cat << EOF > release_notes.md
+        ## STM32 Robotics Control System ${{ steps.get_version.outputs.VERSION }}
+        
+        ### 📦 Firmware Files
+        - \`stm32-robotics-control.elf\` - ELF file for debugging
+        - \`stm32-robotics-control.bin\` - Binary for flashing
+        - \`stm32-robotics-control.hex\` - Intel HEX format
+        
+        ### 📊 Memory Usage
+        - **Flash**: ${FLASH_USED} bytes / 512 KB ($(($FLASH_USED * 100 / 524288))%)
+        - **RAM**: ${RAM_USED} bytes / 128 KB ($(($RAM_USED * 100 / 131072))%)
+        
+        ### ✨ Features
+        - Modern C++17 motor control
+        - State machine for safe operation
+        - S-curve motion profiles
+        - Hardware-verified stepper control
+        - Professional OOP architecture
+        
+        ### 🔧 Flashing Instructions
+        \`\`\`bash
+        # Using OpenOCD
+        openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \\
+                -c "program stm32-robotics-control.bin 0x08000000 verify reset exit"
+        
+        # Using st-flash
+        st-flash write stm32-robotics-control.bin 0x08000000
+        \`\`\`
+        
+        ### 📝 Changelog
+        See commit history for detailed changes.
+        
+        ### ⚙️ Build Information
+        - **Compiler**: $(arm-none-eabi-gcc --version | head -1)
+        - **Build Type**: Release (optimized)
+        - **Target**: STM32F411RET6
+        - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        EOF
+        
+        cat release_notes.md
+    
+    - name: Create checksums
+      run: |
+        cd build/Release
+        sha256sum stm32-robotics-control.elf > checksums.txt
+        sha256sum stm32-robotics-control.bin >> checksums.txt
+        sha256sum stm32-robotics-control.hex >> checksums.txt
+        cat checksums.txt
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: release_notes.md
+        files: |
+          build/Release/stm32-robotics-control.elf
+          build/Release/stm32-robotics-control.bin
+          build/Release/stm32-robotics-control.hex
+          build/Release/checksums.txt
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Notify success
+      run: |
+        echo "::notice::Release ${{ steps.get_version.outputs.VERSION }} created successfully!"
+

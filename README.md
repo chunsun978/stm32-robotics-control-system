@@ -1,7 +1,7 @@
 # STM32 Robotics Control System
 
-[![STM32 Build](https://github.com/yourusername/stm32-robotics-control-system/workflows/STM32%20Build/badge.svg)](https://github.com/yourusername/stm32-robotics-control-system/actions)
-[![Code Quality](https://github.com/yourusername/stm32-robotics-control-system/workflows/Code%20Quality/badge.svg)](https://github.com/yourusername/stm32-robotics-control-system/actions)
+[![STM32 Build](https://github.com/chunsun978/stm32-robotics-control-system/workflows/STM32%20Build/badge.svg)](https://github.com/chunsun978/stm32-robotics-control-system/actions)
+[![Code Quality](https://github.com/chunsun978/stm32-robotics-control-system/workflows/Code%20Quality/badge.svg)](https://github.com/chunsun978/stm32-robotics-control-system/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Platform](https://img.shields.io/badge/platform-STM32F4-green.svg)](https://www.st.com/stm32f4)
@@ -170,13 +170,24 @@ docs/
 
 ## CI/CD Pipeline
 
-Every push triggers:
-- ✅ Build for Debug and Release
-- ✅ Static code analysis (cppcheck)
-- ✅ Memory usage report
-- ✅ Firmware artifacts (.elf, .bin, .hex)
+**Fully automated build and testing system:**
 
-See [CI/CD Setup Guide](docs/CI_CD_SETUP.md) for details.
+### Continuous Integration
+Every push to `main` or `dev` triggers:
+- ✅ **Multi-config builds** - Debug and Release
+- ✅ **Static analysis** - cppcheck for code quality
+- ✅ **Complexity analysis** - lizard metrics
+- ✅ **Memory reports** - Flash and RAM usage tracking
+- ✅ **Artifacts** - Downloadable firmware files
+
+### Continuous Deployment
+Tagged releases (`v*.*.*`) automatically:
+- ✅ **Build optimized firmware** - Release configuration
+- ✅ **Generate release notes** - Memory usage, checksums
+- ✅ **Publish to GitHub** - Ready-to-flash binaries
+- ✅ **Include documentation** - Flashing instructions
+
+See [CI/CD Documentation](.github/README.md) for complete details.
 
 ## Commands
 

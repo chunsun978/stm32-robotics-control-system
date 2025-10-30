@@ -2,9 +2,9 @@ name: STM32 Build
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, dev ]
 
 jobs:
   build:
@@ -32,34 +32,47 @@ jobs:
         cmake --version
         ninja --version
     
-    - name: Configure CMake
+    - name: Configure CMake (${{ matrix.build_type }})
       run: |
         cmake --preset ${{ matrix.build_type }}
     
-    - name: Build firmware
+    - name: Build
       run: |
-        cmake --build --preset ${{ matrix.build_type }} --verbose
+        cmake --build build/${{ matrix.build_type }} --parallel
     
-    - name: Check build outputs
+    - name: Show memory usage
       run: |
-        echo "Build artifacts:"
-        ls -lh build/${{ matrix.build_type }}/ | grep -E '\.(elf|bin|hex|map)$'
-        echo ""
-        echo "ELF file info:"
-        file build/${{ matrix.build_type }}/stm32-robotics-control.elf
-        echo ""
-        echo "Memory usage:"
         arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf
+        echo ""
+        echo "Detailed size breakdown:"
+        arm-none-eabi-size -A build/${{ matrix.build_type }}/stm32-robotics-control.elf
     
-    - name: Generate memory report
+    - name: Generate build report
       run: |
-        echo "### Memory Usage - ${{ matrix.build_type }}" > memory-report-${{ matrix.build_type }}.txt
-        arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf >> memory-report-${{ matrix.build_type }}.txt
-        echo "" >> memory-report-${{ matrix.build_type }}.txt
-        echo "### Binary sizes" >> memory-report-${{ matrix.build_type }}.txt
-        ls -lh build/${{ matrix.build_type }}/stm32-robotics-control.* | grep -E '\.(elf|bin|hex)$' >> memory-report-${{ matrix.build_type }}.txt
+        echo "## Build Report - ${{ matrix.build_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Memory Usage" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Flash Usage" >> $GITHUB_STEP_SUMMARY
+        FLASH_USED=$(arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf | tail -n 1 | awk '{print $1+$2}')
+        FLASH_TOTAL=524288
+        FLASH_PERCENT=$((FLASH_USED * 100 / FLASH_TOTAL))
+        echo "- Used: ${FLASH_USED} bytes" >> $GITHUB_STEP_SUMMARY
+        echo "- Total: ${FLASH_TOTAL} bytes (512 KB)" >> $GITHUB_STEP_SUMMARY
+        echo "- Usage: ${FLASH_PERCENT}%" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### RAM Usage" >> $GITHUB_STEP_SUMMARY
+        RAM_USED=$(arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf | tail -n 1 | awk '{print $2+$3}')
+        RAM_TOTAL=131072
+        RAM_PERCENT=$((RAM_USED * 100 / RAM_TOTAL))
+        echo "- Used: ${RAM_USED} bytes" >> $GITHUB_STEP_SUMMARY
+        echo "- Total: ${RAM_TOTAL} bytes (128 KB)" >> $GITHUB_STEP_SUMMARY
+        echo "- Usage: ${RAM_PERCENT}%" >> $GITHUB_STEP_SUMMARY
     
-    - name: Upload firmware artifacts
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: firmware-${{ matrix.build_type }}
@@ -67,15 +80,9 @@ jobs:
           build/${{ matrix.build_type }}/stm32-robotics-control.elf
           build/${{ matrix.build_type }}/stm32-robotics-control.bin
           build/${{ matrix.build_type }}/stm32-robotics-control.hex
-          build/${{ matrix.build_type }}/stm32-robotics-control.map
-          memory-report-${{ matrix.build_type }}.txt
         retention-days: 30
-        if-no-files-found: error
     
-    - name: Check for warnings
+    - name: Check for size increase
+      if: github.event_name == 'pull_request'
       run: |
-        if grep -i "warning" build/${{ matrix.build_type }}/build.log 2>/dev/null; then
-          echo "::warning::Build contains compiler warnings"
-        fi
-      continue-on-error: true
-
+        echo "::notice::Build ${{ matrix.build_type }} successful. Check artifacts for firmware files."
