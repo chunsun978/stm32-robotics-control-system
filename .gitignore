@@ -74,3 +74,8 @@ node_modules/
 Drivers/CMSIS/DSP/Source/
 Drivers/STM32F4xx_HAL_Driver/Src/
 
+# Project-specific files (optional development utilities)
+.mxproject
+stlink-config.txt
+prevent-driver-update.md
+
