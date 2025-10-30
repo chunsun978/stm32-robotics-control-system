@@ -52,7 +52,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Application modules
     Core/Src/modules/app/cpp_main.cpp
     Core/Src/modules/hal/Led.cpp
-    # Motor control module (add motor files here later)
+    # Motor control module
+    Core/Src/modules/motor/motor_control.cpp
 )
 
 # Add include paths
