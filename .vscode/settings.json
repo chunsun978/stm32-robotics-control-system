@@ -1,0 +1,11 @@
+{
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json",
+    "cortex-debug.openocdPath": "openocd",
+    "cortex-debug.gdbPath": "arm-none-eabi-gdb",
+    "cortex-debug.armToolchainPath": "",
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c"
+    }
+}
+

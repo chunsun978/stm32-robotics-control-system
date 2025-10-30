@@ -1,0 +1,8 @@
+# ST-LINK GDB Server Configuration for NUCLEO-F411RE
+# Based on working STM32CubeProgrammer settings
+
+connection_type SWD
+reset_mode sw_reset
+frequency 4000
+serial_number 0672FF3134584B3043134516
+

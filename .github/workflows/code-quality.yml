@@ -1,0 +1,89 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install analysis tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cppcheck clang-format
+    
+    - name: Run cppcheck
+      run: |
+        cppcheck --version
+        cppcheck \
+          --enable=warning,style,performance,portability \
+          --error-exitcode=0 \
+          --suppress=missingIncludeSystem \
+          --suppress=unmatchedSuppression \
+          --inline-suppr \
+          -I Core/Inc \
+          --xml \
+          Core/Src/ 2> cppcheck-report.xml
+        
+        # Display results
+        cppcheck \
+          --enable=warning,style,performance,portability \
+          --suppress=missingIncludeSystem \
+          --suppress=unmatchedSuppression \
+          -I Core/Inc \
+          Core/Src/
+      continue-on-error: true
+    
+    - name: Check C++ file formatting (non-blocking)
+      run: |
+        echo "Checking code formatting..."
+        find Core/Inc Core/Src -name '*.cpp' -o -name '*.hpp' | while read file; do
+          if [ -f "$file" ]; then
+            clang-format --dry-run --Werror "$file" 2>&1 || echo "::warning file=$file::Formatting issues detected"
+          fi
+        done
+      continue-on-error: true
+    
+    - name: Upload analysis results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: static-analysis-results
+        path: cppcheck-report.xml
+        retention-days: 7
+  
+  code-metrics:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Count lines of code
+      run: |
+        echo "### Code Statistics" > code-stats.txt
+        echo "" >> code-stats.txt
+        echo "#### C/C++ Source Files:" >> code-stats.txt
+        find Core/Src -name '*.c' -o -name '*.cpp' | xargs wc -l | tail -1 >> code-stats.txt
+        echo "" >> code-stats.txt
+        echo "#### C/C++ Header Files:" >> code-stats.txt
+        find Core/Inc -name '*.h' -o -name '*.hpp' | xargs wc -l | tail -1 >> code-stats.txt
+        echo "" >> code-stats.txt
+        echo "#### All Files:" >> code-stats.txt
+        find Core -name '*.c' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' | xargs wc -l | tail -1 >> code-stats.txt
+        cat code-stats.txt
+    
+    - name: Upload code metrics
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-metrics
+        path: code-stats.txt
+        retention-days: 7
+

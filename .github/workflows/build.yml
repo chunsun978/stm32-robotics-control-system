@@ -1,0 +1,81 @@
+name: STM32 Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install ARM GCC toolchain
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+        arm-none-eabi-gcc --version
+    
+    - name: Install CMake and Ninja
+      run: |
+        sudo apt-get install -y cmake ninja-build
+        cmake --version
+        ninja --version
+    
+    - name: Configure CMake
+      run: |
+        cmake --preset ${{ matrix.build_type }}
+    
+    - name: Build firmware
+      run: |
+        cmake --build --preset ${{ matrix.build_type }} --verbose
+    
+    - name: Check build outputs
+      run: |
+        echo "Build artifacts:"
+        ls -lh build/${{ matrix.build_type }}/ | grep -E '\.(elf|bin|hex|map)$'
+        echo ""
+        echo "ELF file info:"
+        file build/${{ matrix.build_type }}/stm32-robotics-control.elf
+        echo ""
+        echo "Memory usage:"
+        arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf
+    
+    - name: Generate memory report
+      run: |
+        echo "### Memory Usage - ${{ matrix.build_type }}" > memory-report-${{ matrix.build_type }}.txt
+        arm-none-eabi-size build/${{ matrix.build_type }}/stm32-robotics-control.elf >> memory-report-${{ matrix.build_type }}.txt
+        echo "" >> memory-report-${{ matrix.build_type }}.txt
+        echo "### Binary sizes" >> memory-report-${{ matrix.build_type }}.txt
+        ls -lh build/${{ matrix.build_type }}/stm32-robotics-control.* | grep -E '\.(elf|bin|hex)$' >> memory-report-${{ matrix.build_type }}.txt
+    
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.build_type }}
+        path: |
+          build/${{ matrix.build_type }}/stm32-robotics-control.elf
+          build/${{ matrix.build_type }}/stm32-robotics-control.bin
+          build/${{ matrix.build_type }}/stm32-robotics-control.hex
+          build/${{ matrix.build_type }}/stm32-robotics-control.map
+          memory-report-${{ matrix.build_type }}.txt
+        retention-days: 30
+        if-no-files-found: error
+    
+    - name: Check for warnings
+      run: |
+        if grep -i "warning" build/${{ matrix.build_type }}/build.log 2>/dev/null; then
+          echo "::warning::Build contains compiler warnings"
+        fi
+      continue-on-error: true
+

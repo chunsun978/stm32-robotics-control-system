@@ -1,0 +1,16 @@
+Quick pin test instructions:
+
+If PA5 doesn't show on scope, try testing a different GPIO pin:
+
+Option 1: Use PA6 (available on CN10 pin 13)
+Option 2: Use PA7 (available on CN10 pin 15)
+
+These pins need to be configured first in STM32CubeMX, but PA5 (LD2) is already configured and should work.
+
+Make sure:
+1. Scope probe ground clip is connected to board GND
+2. Scope is on DC coupling (not AC)
+3. Time base is slow enough (500ms/div or 1s/div)
+4. Voltage scale shows 0-5V range
+5. You're probing the correct physical pin
+

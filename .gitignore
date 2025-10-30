@@ -1,0 +1,76 @@
+# Build directories
+build/
+cmake-build-*/
+.cmake/
+
+# Documentation
+docs/
+
+# IDE specific
+.vscode/.cortex-debug.*
+.vscode/.BROWSE.*
+*.code-workspace
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled files
+*.o
+*.obj
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.d
+*.su
+
+# Debug files
+*.dSYM/
+*.pdb
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Log files
+*.log
+simulation_output.csv
+*.csv
+
+# OS specific
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.bak
+*.tmp
+*.temp
+*~
+
+# STM32CubeMX backup
+*.ioc.bak
+
+# Test results
+test/build/
+test_results/
+*.xml
+
+# Analysis reports
+cppcheck-*.xml
+*.sarif
+
+# Package managers
+node_modules/
+
+# Third-party libraries (exclude source files)
+Drivers/CMSIS/DSP/Source/
+Drivers/STM32F4xx_HAL_Driver/Src/
+
