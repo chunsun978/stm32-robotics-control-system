@@ -22,6 +22,21 @@
 - **Professional Architecture** - Clean separation of concerns, modular design
 - **Comprehensive Documentation** - Detailed guides for setup, porting, and development
 
+## 📊 Hardware Verified - Working Motor Control
+
+![Motor Control Signals](images/Motor-Contrl-Signals-Capture.png)
+
+**Oscilloscope capture showing successful motor control:**
+- **D0 (PA9)**: Enable signal - Active HIGH
+- **D1 (PA0)**: STEP pulses - PWM at 100-500 Hz
+- **D2 (PA8)**: Direction signal - HIGH=forward, LOW=reverse
+
+✅ **Verified on STM32F411RE Nucleo board**  
+✅ **Clean PWM signals with 50% duty cycle**  
+✅ **Stable direction and enable control**
+
+---
+
 ## 💼 Skills Demonstrated
 
 - **Embedded Systems Design** - Bare-metal programming, peripheral configuration
