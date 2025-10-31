@@ -32,10 +32,10 @@ StepperMotor& initializeMotor() {
     config.dir_port = GPIOA;
     config.dir_pin = GPIO_PIN_8;
     
-    // Enable control (PA9, active HIGH for our driver)
+    // Enable control (PA9, active HIGH for this driver)
     config.enable_port = GPIOA;
     config.enable_pin = GPIO_PIN_9;
-    config.enable_active_low = false;  // Active HIGH enable
+    config.enable_active_low = false;  // Active HIGH enable (enable when pin is HIGH)
     
     g_motor = std::make_unique<StepperMotor>(config);
     return *g_motor;
@@ -84,6 +84,8 @@ void test_scurve_motion(StepperMotor& motor, MotorStateMachine& sm) {
     // Enable motor and transition state
     sm.processEvent(MotorStateMachine::Event::ENABLE);
     motor.setEnabled(true);
+    printf("  Motor enabled: PA9 should be HIGH\r\n");
+    HAL_Delay(500);  // Give time to see enable signal on logic analyzer
     
     // Create S-curve profile
     SCurveProfile profile;
@@ -97,6 +99,7 @@ void test_scurve_motion(StepperMotor& motor, MotorStateMachine& sm) {
     config.start_velocity = 0.0f;
     
     if (profile.calculate(1000.0f, config)) {
+        printf("  Profile calculated successfully!\r\n");
         printf("  Total time: %.2f sec\r\n", profile.getTotalTime());
         printf("  Max velocity: %.1f steps/sec\r\n", config.max_velocity);
         
@@ -110,11 +113,19 @@ void test_scurve_motion(StepperMotor& motor, MotorStateMachine& sm) {
         float elapsed = 0.0f;
         bool reached_cruise = false;
         
+        printf("  Starting motion loop...\r\n");
+        
+        // **TEST: Set constant speed at start and never change it**
+        printf("  TEST: Setting constant 300 steps/sec for entire profile duration\r\n");
+        motor.setStepRate(300.0f);  // Set once
+        
         while (elapsed < profile.getTotalTime()) {
             elapsed = (HAL_GetTick() - start) / 1000.0f;
             
             SCurveProfile::State state = profile.getStateAtTime(elapsed);
-            motor.setStepRate(state.velocity);
+            
+            // DON'T update speed - keep it constant to test if problem is with updating
+            // motor.setStepRate(state.velocity);
             
             // Track state transitions based on profile phase
             if (!reached_cruise && state.phase == 4) {
@@ -132,7 +143,7 @@ void test_scurve_motion(StepperMotor& motor, MotorStateMachine& sm) {
                 last_print = HAL_GetTick();
             }
             
-            HAL_Delay(50);  // Update every 50ms
+            HAL_Delay(20);  // Update every 20ms (smoother than 50ms)
         }
         
         // Motion complete - transition to DECELERATING then READY
@@ -141,6 +152,8 @@ void test_scurve_motion(StepperMotor& motor, MotorStateMachine& sm) {
         sm.processEvent(MotorStateMachine::Event::MOTION_COMPLETE);
         
         printf("  Motion complete!\r\n");
+    } else {
+        printf("  ERROR: Test 1 profile calculation FAILED!\r\n");
     }
     
     HAL_Delay(2000);
@@ -155,6 +168,8 @@ void test_scurve_motion(StepperMotor& motor, MotorStateMachine& sm) {
         printf("  Total time: %.2f sec\r\n", profile.getTotalTime());
         printf("  Max velocity: %.1f steps/sec\r\n", config.max_velocity);
         
+        // Re-enable motor for Test 2
+        motor.setEnabled(true);  // ← FIX: Enable motor again!
         motor.setDirection(false);  // Reverse
         sm.processEvent(MotorStateMachine::Event::START_MOTION);
         
@@ -256,21 +271,121 @@ void motor_control_main(void) {
     // Initialize state machine
     sm.processEvent(MotorStateMachine::Event::INITIALIZE);
     
-#if CURRENT_TEST_MODE == TEST_MODE_SCURVE
-    printf("Running S-Curve Motion Control Test with State Machine\r\n");
-    printf("(To switch to basic test, change CURRENT_TEST_MODE in motor_control.cpp)\r\n");
+    // === S-CURVE MOTION TEST ===
+    printf("\r\n=== S-Curve Motion Test ===\r\n");
     
     while (1) {
-        test_scurve_motion(motor, sm);
-        printf("\n=== S-Curve test complete, restarting ===\r\n");
+        // Test 1: 1000 steps forward
+        printf("\n--- Test 1: 1000 steps (smooth) ---\r\n");
+        motor.setEnabled(true);
+        motor.setDirection(true);
+        HAL_Delay(100);
+        
+        SCurveProfile profile;
+        SCurveProfile::Config config;
+        config.max_velocity = 500.0f;
+        config.max_acceleration = 1000.0f;
+        config.start_velocity = 0.0f;
+        
+        if (profile.calculate(1000.0f, config)) {
+            printf("Profile calculated: %.2f sec\r\n", profile.getTotalTime());
+            
+            uint32_t start = HAL_GetTick();
+            float elapsed = 0.0f;
+            const float MIN_VELOCITY = 50.0f;
+            bool motor_started = false;
+            float last_velocity = 0.0f;
+            int loop_count = 0;
+            
+            while (elapsed < profile.getTotalTime()) {
+                elapsed = (HAL_GetTick() - start) / 1000.0f;
+                SCurveProfile::State state = profile.getStateAtTime(elapsed);
+                
+                // Printf provides necessary timing delays for PWM stability
+                printf("  [%d] t=%.2f v=%.1f", loop_count++, elapsed, state.velocity);
+                
+                if (state.velocity >= MIN_VELOCITY) {
+                    // Only update if velocity changed by more than 50 steps/sec
+                    if (std::abs(state.velocity - last_velocity) > 50.0f) {
+                        motor.setStepRate(state.velocity);
+                        last_velocity = state.velocity;
+                        printf(" -> SET\r\n");
+                    } else {
+                        printf(" -> RUN\r\n");
+                    }
+                    motor_started = true;
+                } else if (motor_started) {
+                    printf(" -> STOP\r\n");
+                    break;
+                } else {
+                    printf(" -> WAIT\r\n");
+                }
+                
+                HAL_Delay(50);
+            }
+            
+            // Ensure motor is stopped (in case loop completed naturally)
+            motor.stop();
+            printf("Complete!\r\n");
+        }
+        
+        HAL_Delay(2000);
+        
+        // Test 2: 2000 steps reverse
+        printf("\n--- Test 2: 2000 steps (faster, reverse) ---\r\n");
+        motor.setDirection(false);
+        HAL_Delay(100);
+        
+        config.max_velocity = 1000.0f;
+        config.max_acceleration = 2000.0f;
+        
+        if (profile.calculate(2000.0f, config)) {
+            printf("Profile calculated: %.2f sec\r\n", profile.getTotalTime());
+            
+            uint32_t start = HAL_GetTick();
+            float elapsed = 0.0f;
+            const float MIN_VELOCITY = 50.0f;
+            bool motor_started = false;
+            float last_velocity = 0.0f;
+            int loop_count = 0;
+            
+            while (elapsed < profile.getTotalTime()) {
+                elapsed = (HAL_GetTick() - start) / 1000.0f;
+                SCurveProfile::State state = profile.getStateAtTime(elapsed);
+                
+                // Printf provides necessary timing delays for PWM stability
+                printf("  [%d] t=%.2f v=%.1f", loop_count++, elapsed, state.velocity);
+                
+                if (state.velocity >= MIN_VELOCITY) {
+                    if (std::abs(state.velocity - last_velocity) > 50.0f) {
+                        motor.setStepRate(state.velocity);
+                        last_velocity = state.velocity;
+                        printf(" -> SET\r\n");
+                    } else {
+                        printf(" -> RUN\r\n");
+                    }
+                    motor_started = true;
+                } else if (motor_started) {
+                    printf(" -> STOP\r\n");
+                    break;
+                } else {
+                    printf(" -> WAIT\r\n");
+                }
+                
+                HAL_Delay(50);
+            }
+
+            
+            // Ensure motor is stopped
+            motor.stop();
+            printf("Complete!\r\n");
+        }
+        
+        motor.setEnabled(false);
         HAL_Delay(3000);
+        
+        printf("\n=== Cycle complete, repeating ===\r\n");
     }
-#else
-    printf("Running Basic Speed Control Test\r\n");
-    printf("(To switch to S-curve test, change CURRENT_TEST_MODE in motor_control.cpp)\r\n");
-    
-    test_basic_speed(motor);  // Never returns
-#endif
 }
 
 } // extern "C"

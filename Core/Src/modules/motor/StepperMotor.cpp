@@ -62,22 +62,26 @@ void StepperMotor::updatePWMFrequency(float frequency_hz) {
     }
     
     // Calculate timer settings for desired PWM frequency
-    // PWM frequency = Timer Clock / ((Prescaler + 1) * (Period + 1))
-    
     uint32_t timer_clock = getTimerClock();
     uint32_t target_freq = static_cast<uint32_t>(frequency_hz);
     
-    // Use fixed prescaler for better resolution
     const uint32_t prescaler = 99;  // 84 MHz / 100 = 840 kHz base freq
     uint32_t period = (timer_clock / (prescaler + 1)) / target_freq;
     
     // Clamp period to valid range
     period = std::max(static_cast<uint32_t>(2), std::min(period, static_cast<uint32_t>(65535)));
     
-    // Configure timer
-    __HAL_TIM_SET_PRESCALER(config_.step_timer, prescaler);
-    __HAL_TIM_SET_AUTORELOAD(config_.step_timer, period - 1);
-    __HAL_TIM_SET_COMPARE(config_.step_timer, config_.step_channel, period / 2);  // 50% duty
+    // ALWAYS stop, reconfigure, and restart
+    // On-the-fly updates with UG event seem unreliable
+    HAL_TIM_PWM_Stop(config_.step_timer, config_.step_channel);
+    
+    config_.step_timer->Instance->PSC = prescaler;
+    config_.step_timer->Instance->ARR = period - 1;
+    config_.step_timer->Instance->CCR1 = period / 2;
+    
+    // Generate update event to load prescaler
+    config_.step_timer->Instance->EGR = TIM_EGR_UG;
+    __HAL_TIM_CLEAR_FLAG(config_.step_timer, TIM_FLAG_UPDATE);
     
     // Start PWM
     HAL_TIM_PWM_Start(config_.step_timer, config_.step_channel);
