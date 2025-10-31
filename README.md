@@ -59,19 +59,6 @@
 
 ---
 
-## 📋 Project Overview
-
-A comprehensive learning platform and production-ready framework for embedded C++ development on STM32F411, featuring motor control, robotics algorithms, and modern C++ practices.
-
-## Features
-
-- ✅ **C++17 Support** - Modern C++ on bare metal
-- ✅ **UART Debugging** - `printf` over UART2 (115200 baud)
-- ✅ **Motor Control** - Stepper motor control with S-curve motion planning
-- ✅ **PID Control** - Closed-loop control algorithms
-- ✅ **CI/CD Pipeline** - Automated builds and testing
-- ✅ **Portable Design** - Easy to port to other STM32 projects
-
 ## 🔧 Hardware Platform
 
 - **MCU**: STM32F411RET6 (ARM Cortex-M4F @ 100 MHz)
@@ -156,29 +143,6 @@ docs/
 - **[S-Curve Troubleshooting](docs/S-CURVE_TROUBLESHOOTING.md)** - Complete debugging guide with root cause analysis
 - **[CI/CD Setup](docs/CI_CD_SETUP.md)** - Continuous integration guide
 
-## Learning Path
-
-### Phase 1: Basic C++ (✅ Complete)
-- [x] LED control with C++ class
-- [x] `printf` debugging over UART
-- [x] Build automation scripts
-
-### Phase 2: Motor Control (✅ Complete)
-- [x] Timer-based PWM for step pulses
-- [x] Basic stepper motor control
-- [x] S-curve motion planning
-- [x] Hardware-verified smooth motion
-
-### Phase 3: Advanced Control
-- [ ] PID controller implementation
-- [ ] Encoder feedback
-- [ ] Closed-loop position control
-
-### Phase 4: System Integration
-- [ ] Command parser (UART interface)
-- [ ] Multi-axis coordination
-- [ ] Trajectory planning
-
 ## CI/CD Pipeline
 
 **Fully automated build and testing system:**
@@ -216,44 +180,12 @@ See [CI/CD Documentation](.github/README.md) for complete details.
 .\serial-monitor.ps1 COM5  # UART monitor
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-CI/CD will automatically:
-- Build your code
-- Run static analysis
-- Check code quality
-- Generate artifacts
-
-## License
-
-This project is for educational purposes.
-
 ## Resources
 
 - [STM32F411 Datasheet](https://www.st.com/resource/en/datasheet/stm32f411re.pdf)
 - [STM32F4 Reference Manual](https://www.st.com/resource/en/reference_manual/dm00031020.pdf)
 - [STM32 HAL Documentation](https://www.st.com/resource/en/user_manual/dm00105879.pdf)
 - [C++17 Features](https://en.cppreference.com/w/cpp/17)
-
-## 📈 Project Evolution
-
-This project demonstrates platform migration and architecture improvement:
-
-**Original**: `esp32s3_stepper_scurve_pid` (C, FreeRTOS, ESP-IDF)  
-**Enhanced**: `stm32-robotics-control-system` (C++17, bare-metal, portable HAL)
-
-**Key Improvements**:
-- Migrated from C to modern C++17
-- Designed hardware abstraction layer for portability
-- Implemented modular architecture for reusability
-- Added comprehensive CI/CD pipeline
-- Enhanced documentation and testing
 
 ## 🤝 Contributing
 
@@ -276,14 +208,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - STM32 HAL by STMicroelectronics
 - Inspired by professional CNC and robotics control systems
 
-## 📞 Contact
-
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Project Link: [stm32-robotics-control-system](https://github.com/yourusername/stm32-robotics-control-system)
-
 ---
 
 **⭐ If you find this project useful, please consider giving it a star!**
-
-Replace `yourusername` with your actual GitHub username for working badges and links.
 
