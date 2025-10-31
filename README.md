@@ -59,18 +59,6 @@
 
 ---
 
-## 💼 Skills Demonstrated
-
-- **Embedded Systems Design** - Bare-metal programming, peripheral configuration
-- **Real-Time Control** - Deterministic timing, interrupt handling, state machines
-- **Modern C++** - C++17 features, STL, lambdas, templates
-- **Motion Control Algorithms** - S-curve profiles, trajectory planning, kinematics
-- **PID Tuning** - Closed-loop control, system identification
-- **Hardware Abstraction** - Platform-independent interfaces, dependency injection
-- **Software Architecture** - Modular design, SOLID principles, portability
-- **DevOps for Embedded** - CI/CD, automated testing, version control
-- **Cross-Platform Development** - Ported from ESP32 to STM32
-
 ## 📋 Project Overview
 
 A comprehensive learning platform and production-ready framework for embedded C++ development on STM32F411, featuring motor control, robotics algorithms, and modern C++ practices.
