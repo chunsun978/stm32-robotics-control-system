@@ -1,0 +1,26 @@
+# Qt Creator user files
+.qtcreator/
+*.pro.user
+*.pro.user.*
+*.autosave
+
+# Build artifacts
+build/
+*.o
+*.obj
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+
+# Keep the pre-compiled library (exception to *.a rule)
+!qcustomplot_obj/libqcustomplot.a
+
+# Qt generated files
+Makefile*
+*.qm
+*.prl
+
+# Backup files
+*.backup
+*~
+

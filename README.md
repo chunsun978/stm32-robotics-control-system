@@ -59,6 +59,30 @@
 
 ---
 
+## 🖥️ Professional Qt GUI - Real-Time Visualization
+
+![Motor Control GUI](images/Screenshot%202025-10-31%20174730.png)
+
+**Desktop application for motor control and visualization:**
+- 📊 **Real-time S-curve plotting** - Position and velocity tracking
+- 🎛️ **PID Tuning Interface** - Live parameter adjustment
+- 🔌 **Serial Communication** - Direct STM32 connection
+- 📈 **Motion Planning** - Configure steps, velocity, acceleration
+- 🧪 **Mock Data Mode** - Test GUI without hardware
+
+![GUI In Action](images/Screenshot%202025-10-31%20174858.png)
+
+**Features:**
+- ✅ Beautiful QCustomPlot integration for high-performance graphing
+- ✅ Real-time telemetry at 20 Hz
+- ✅ S-curve motion profile visualization
+- ✅ Console logging and command history
+- ✅ Run recording and playback (coming soon)
+
+> See [GUI Documentation](gui/qt/README.md) for setup and usage instructions.
+
+---
+
 ## 🔧 Hardware Platform
 
 - **MCU**: STM32F411RET6 (ARM Cortex-M4F @ 100 MHz)
