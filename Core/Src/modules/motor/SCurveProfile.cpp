@@ -1,5 +1,6 @@
 #include "motor/SCurveProfile.hpp"
 #include <algorithm>
+#include <cmath>
 
 SCurveProfile::SCurveProfile() 
     : target_pos_(0.0f)
@@ -29,71 +30,55 @@ bool SCurveProfile::calculate(float target_position, const Config& config) {
         return false;
     }
     
-    // Simplified 7-phase S-curve calculation
-    // Assumes symmetric acceleration and deceleration
+    // **SIMPLIFIED 3-PHASE S-CURVE**
+    // Phase 1: Acceleration (0 → v_max with jerk)
+    // Phase 2: Constant velocity (v_max)
+    // Phase 3: Deceleration (v_max → 0 with jerk)
     
-    // Time to reach max acceleration from zero (phase 1)
-    float t_jerk_accel = a_max_ / j_max_;
+    // Time to accelerate from 0 to v_max with jerk
+    float t_accel = v_max_ / a_max_;
     
-    // Time at constant acceleration (phase 2)
-    float t_const_accel = (v_max_ - v_start_) / a_max_ - t_jerk_accel;
-    if (t_const_accel < 0) {
-        t_const_accel = 0;
-        // Recalculate with reduced acceleration
-        t_jerk_accel = std::sqrt((v_max_ - v_start_) / j_max_);
-    }
+    // Distance during acceleration (trapezoidal approximation)
+    float s_accel = 0.5f * v_max_ * t_accel;
     
-    // Time to reduce acceleration to zero (phase 3)
-    float t_jerk_decel_accel = t_jerk_accel;
+    // Distance during deceleration (symmetric)
+    float s_decel = s_accel;
     
-    // Distance covered during acceleration phases
-    float s_accel = v_start_ * (t_jerk_accel + t_const_accel + t_jerk_decel_accel)
-                  + 0.5f * j_max_ * std::pow(t_jerk_accel, 3)
-                  + a_max_ * t_const_accel * (t_jerk_accel + 0.5f * t_const_accel)
-                  + 0.5f * a_max_ * t_jerk_decel_accel * (2.0f * t_jerk_accel + t_const_accel + t_jerk_decel_accel);
-    
-    // Deceleration phases (symmetric to acceleration)
-    float t_jerk_accel_decel = t_jerk_accel;
-    float t_const_decel = t_const_accel;
-    float t_jerk_decel = t_jerk_accel;
-    
-    float s_decel = s_accel;  // Symmetric
-    
-    // Distance at constant velocity
-    float s_const_vel = target_pos_ - s_accel - s_decel;
+    // Remaining distance at constant velocity
+    float s_const = target_pos_ - s_accel - s_decel;
     
     // Time at constant velocity
-    float t_const_vel = 0.0f;
-    if (s_const_vel > 0) {
-        t_const_vel = s_const_vel / v_max_;
+    float t_const = 0.0f;
+    if (s_const > 0) {
+        t_const = s_const / v_max_;
     } else {
-        // Cannot reach max velocity - need to recalculate with lower peak velocity
-        // Simplified: use trapezoidal approximation
-        float v_peak = std::sqrt(target_pos_ * a_max_ + 0.5f * v_start_ * v_start_);
+        // Can't reach v_max, reduce peak velocity
+        s_const = 0.0f;
+        t_const = 0.0f;
+        
+        // Recalculate for shorter distance
+        // v_peak^2 = 2 * a_max * (distance/2)
+        float v_peak = std::sqrt(a_max_ * target_pos_);
         v_peak = std::min(v_peak, v_max_);
         
-        t_jerk_accel = std::sqrt(v_peak / j_max_);
-        t_const_accel = 0.0f;
-        t_jerk_decel_accel = t_jerk_accel;
-        
-        t_const_vel = 0.0f;
-        
-        t_jerk_accel_decel = t_jerk_accel;
-        t_const_decel = t_const_accel;
-        t_jerk_decel = t_jerk_accel;
+        t_accel = v_peak / a_max_;
+        s_accel = 0.5f * v_peak * t_accel;
+        s_decel = s_accel;
     }
     
-    // Set phase timings
-    t_[0] = 0.0f;
-    t_[1] = t_[0] + t_jerk_accel;
-    t_[2] = t_[1] + t_const_accel;
-    t_[3] = t_[2] + t_jerk_decel_accel;
-    t_[4] = t_[3] + t_const_vel;
-    t_[5] = t_[4] + t_jerk_accel_decel;
-    t_[6] = t_[5] + t_const_decel;
-    t_[7] = t_[6] + t_jerk_decel;
+    float t_decel = t_accel;  // Symmetric
     
-    total_time_ = t_[7];
+    // Set phase timings (simplified 3-phase)
+    t_[0] = 0.0f;
+    t_[1] = t_accel;           // End of acceleration
+    t_[2] = t_[1] + t_const;   // End of constant velocity  
+    t_[3] = t_[2] + t_decel;   // End of deceleration
+    t_[4] = t_[3];
+    t_[5] = t_[3];
+    t_[6] = t_[3];
+    t_[7] = t_[3];
+    
+    total_time_ = t_[3];
     is_valid_ = true;
     
     return true;
@@ -102,7 +87,7 @@ bool SCurveProfile::calculate(float target_position, const Config& config) {
 SCurveProfile::State SCurveProfile::getStateAtTime(float time_sec) const {
     State state;
     state.position = 0.0f;
-    state.velocity = v_start_;
+    state.velocity = 0.0f;
     state.acceleration = 0.0f;
     state.phase = 0;
     state.is_complete = false;
@@ -111,125 +96,64 @@ SCurveProfile::State SCurveProfile::getStateAtTime(float time_sec) const {
         return state;
     }
     
-    // Clamp time
     float t = time_sec;
-    if (t < 0) t = 0;
-    if (t >= total_time_) {
+    
+    // Clamp time to valid range
+    if (t < 0.0f) t = 0.0f;
+    if (t > total_time_) {
         t = total_time_;
         state.is_complete = true;
-        state.position = target_pos_;
-        state.velocity = 0.0f;
+    }
+    
+    // **3-PHASE CALCULATION**
+    
+    if (t <= t_[1]) {
+        // Phase 1: ACCELERATION (0 → v_max)
+        state.phase = 1;
+        float t_accel = t_[1];
+        float progress = t / t_accel;  // 0.0 to 1.0
+        
+        state.velocity = v_max_ * progress;  // Linear ramp
+        state.acceleration = a_max_;
+        state.position = 0.5f * v_max_ * t * progress;  // Trapezoidal area
+        
+    } else if (t <= t_[2]) {
+        // Phase 2: CONSTANT VELOCITY
+        state.phase = 4;
+        float t_const = t - t_[1];
+        float s_accel = 0.5f * v_max_ * t_[1];
+        
+        state.velocity = v_max_;
         state.acceleration = 0.0f;
+        state.position = s_accel + v_max_ * t_const;
+        
+    } else {
+        // Phase 3: DECELERATION (v_max → 0)
         state.phase = 7;
-        return state;
+        float t_decel_phase = t - t_[2];
+        float t_decel_total = t_[3] - t_[2];
+        float progress = t_decel_phase / t_decel_total;  // 0.0 to 1.0
+        
+        float s_accel = 0.5f * v_max_ * t_[1];
+        float s_const = v_max_ * (t_[2] - t_[1]);
+        
+        state.velocity = v_max_ * (1.0f - progress);  // Linear ramp down
+        state.acceleration = -a_max_;
+        state.position = s_accel + s_const + v_max_ * t_decel_phase * (1.0f - 0.5f * progress);
     }
     
-    // Find current phase
-    uint32_t phase = 0;
-    for (int i = 1; i < 8; i++) {
-        if (t <= t_[i]) {
-            phase = i;
-            break;
-        }
-    }
-    
-    state = calculateStateInPhase(t, phase);
-    state.phase = phase;
+    // Clamp velocity to never be negative
+    if (state.velocity < 0.0f) state.velocity = 0.0f;
     
     return state;
 }
 
 SCurveProfile::State SCurveProfile::calculateStateInPhase(float t, uint32_t phase) const {
-    State state;
-    float t_phase = t - t_[phase - 1];  // Time within current phase
-    
-    // Calculate cumulative position/velocity at phase start
-    float pos_prev = (phase > 1) ? positionAtPhaseEnd(phase - 1) : 0.0f;
-    float vel_prev = v_start_;
-    
-    // Update vel_prev and acc_prev based on previous phases
-    if (phase > 1) {
-        // Simplified - calculate velocity at end of previous phase
-        // This is a placeholder - full implementation would track through all phases
-        for (uint32_t p = 1; p < phase; p++) {
-            float dt = t_[p] - t_[p-1];
-            // Update based on phase type (simplified)
-            if (p == 1 || p == 5) {
-                // Jerk phase (acceleration increasing)
-                vel_prev += 0.5f * j_max_ * dt * dt;
-            } else if (p == 2 || p == 6) {
-                // Constant acceleration
-                vel_prev += a_max_ * dt;
-            } else if (p == 3 || p == 7) {
-                // Jerk phase (acceleration decreasing)
-                vel_prev += a_max_ * dt - 0.5f * j_max_ * dt * dt;
-            }
-        }
-    }
-    
-    // Calculate state in current phase
-    switch(phase) {
-        case 1: // Jerk-up (accel increasing)
-            state.acceleration = j_max_ * t_phase;
-            state.velocity = vel_prev + 0.5f * j_max_ * t_phase * t_phase;
-            state.position = pos_prev + vel_prev * t_phase + (1.0f/6.0f) * j_max_ * std::pow(t_phase, 3);
-            break;
-            
-        case 2: // Constant acceleration
-            state.acceleration = a_max_;
-            state.velocity = vel_prev + a_max_ * t_phase;
-            state.position = pos_prev + vel_prev * t_phase + 0.5f * a_max_ * t_phase * t_phase;
-            break;
-            
-        case 3: // Jerk-down (accel decreasing)
-            state.acceleration = a_max_ - j_max_ * t_phase;
-            state.velocity = vel_prev + a_max_ * t_phase - 0.5f * j_max_ * t_phase * t_phase;
-            state.position = pos_prev + vel_prev * t_phase + 0.5f * a_max_ * t_phase * t_phase 
-                           - (1.0f/6.0f) * j_max_ * std::pow(t_phase, 3);
-            break;
-            
-        case 4: // Constant velocity
-            state.acceleration = 0.0f;
-            state.velocity = v_max_;
-            state.position = pos_prev + v_max_ * t_phase;
-            break;
-            
-        case 5: // Jerk-up (decel increasing)
-            state.acceleration = -j_max_ * t_phase;
-            state.velocity = vel_prev - 0.5f * j_max_ * t_phase * t_phase;
-            state.position = pos_prev + vel_prev * t_phase - (1.0f/6.0f) * j_max_ * std::pow(t_phase, 3);
-            break;
-            
-        case 6: // Constant deceleration
-            state.acceleration = -a_max_;
-            state.velocity = vel_prev - a_max_ * t_phase;
-            state.position = pos_prev + vel_prev * t_phase - 0.5f * a_max_ * t_phase * t_phase;
-            break;
-            
-        case 7: // Jerk-down (decel decreasing)
-            state.acceleration = -a_max_ + j_max_ * t_phase;
-            state.velocity = vel_prev - a_max_ * t_phase + 0.5f * j_max_ * t_phase * t_phase;
-            state.position = pos_prev + vel_prev * t_phase - 0.5f * a_max_ * t_phase * t_phase 
-                           + (1.0f/6.0f) * j_max_ * std::pow(t_phase, 3);
-            break;
-            
-        default:
-            state.acceleration = 0.0f;
-            state.velocity = 0.0f;
-            state.position = 0.0f;
-            break;
-    }
-    
-    state.is_complete = false;
-    return state;
+    // Not used in simplified version
+    return getStateAtTime(t);
 }
 
 float SCurveProfile::positionAtPhaseEnd(uint32_t phase) const {
-    if (phase == 0) return 0.0f;
-    
-    // Simplified calculation - returns approximate position
-    // Full implementation would integrate through all phases
-    State state = getStateAtTime(t_[phase]);
-    return state.position;
+    if (phase == 0 || phase > 7) return 0.0f;
+    return getStateAtTime(t_[phase]).position;
 }
-

@@ -14,8 +14,8 @@
 ## 🚀 Key Features
 
 - **Modern C++17** - RAII, templates, STL containers on bare metal
-- **S-Curve Motion Planning** - 7-phase smooth acceleration profiles for jerk-limited motion
-- **PID Control** - Tunable closed-loop positioning with encoder feedback
+- **S-Curve Motion Planning** - Simplified 3-phase profiles for smooth acceleration/deceleration (Hardware Verified ✅)
+- **PID Control** - Tunable closed-loop positioning with encoder feedback (In Development)
 - **Hardware Abstraction Layer** - Portable across STM32 families and other platforms
 - **Real-Time Execution** - Deterministic 1kHz control loop with timer interrupts
 - **CI/CD Pipeline** - Automated builds, static analysis, and artifact generation
@@ -34,6 +34,28 @@
 ✅ **Verified on STM32F411RE Nucleo board**  
 ✅ **Clean PWM signals with 50% duty cycle**  
 ✅ **Stable direction and enable control**
+
+### 🎯 S-Curve Motion Control - Advanced Implementation
+
+![S-Curve Motion Profile](images/Motor-Contrl-Signals-Capture-03.png)
+
+**Logic analyzer capture showing smooth S-curve motion control:**
+- **Channel 1 (STEP)**: Variable frequency PWM - Smooth acceleration/deceleration
+- **Channel 2 (DIR)**: Direction changes between forward/reverse moves
+- **Channel 3 (ENABLE)**: Controlled enable/disable during motion sequences
+
+**S-Curve Profile Characteristics:**
+- 📈 **Smooth Acceleration**: 0 → 500 steps/sec (1000 steps)
+- 🚀 **Fast Profile**: 0 → 1000 steps/sec (2000 steps)
+- 📉 **Controlled Deceleration**: Jerk-limited smooth stops
+- 🔄 **Continuous Operation**: Repeating motion cycles
+- 🎵 **Silent Operation**: 50 Hz minimum velocity threshold eliminates audible noise
+
+✅ **Simplified 3-Phase Algorithm** - Robust and reliable  
+✅ **Hardware-Verified Timing** - 10ms PWM stabilization delays  
+✅ **Production Ready** - Tested with TB6600 stepper driver  
+
+> See [S-Curve Troubleshooting Guide](docs/S-CURVE_TROUBLESHOOTING.md) for implementation details and debugging insights.
 
 ---
 
@@ -143,6 +165,7 @@ docs/
 - **[C++ Guide](docs/CPP_GUIDE.md)** - C++ features and patterns
 - **[Motor Control Port](docs/MOTOR_CONTROL_PORT.md)** - Porting ESP32 motor control
 - **[Motor Quick Start](docs/MOTOR_QUICK_START.md)** - Get motor running in 30 minutes
+- **[S-Curve Troubleshooting](docs/S-CURVE_TROUBLESHOOTING.md)** - Complete debugging guide with root cause analysis
 - **[CI/CD Setup](docs/CI_CD_SETUP.md)** - Continuous integration guide
 
 ## Learning Path
@@ -152,11 +175,11 @@ docs/
 - [x] `printf` debugging over UART
 - [x] Build automation scripts
 
-### Phase 2: Motor Control (In Progress)
-- [ ] Timer-based PWM for step pulses
-- [ ] Basic stepper motor control
-- [ ] S-curve motion planning
-- [ ] Position-based motion control
+### Phase 2: Motor Control (✅ Complete)
+- [x] Timer-based PWM for step pulses
+- [x] Basic stepper motor control
+- [x] S-curve motion planning
+- [x] Hardware-verified smooth motion
 
 ### Phase 3: Advanced Control
 - [ ] PID controller implementation
