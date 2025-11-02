@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "STM32F4",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "DEBUG",
+                "STM32F411xE",
+                "USE_HAL_DRIVER"
+            ],
+            "compilerPath": "C:/PROGRA~2/GNUARM~1/102021~1.10/bin/arm-none-eabi-gcc.exe",
+            "cStandard": "c11",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "gcc-arm",
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}
+
