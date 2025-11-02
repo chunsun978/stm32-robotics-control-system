@@ -57,9 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/modules/motor/MotorStateMachine.cpp
     Core/Src/modules/motor/SCurveProfile.cpp
     Core/Src/modules/motor/MotionPlanner.cpp
-    Core/Src/modules/motor/motor_control.cpp
-    Core/Src/modules/motor/motor_control_safe.cpp
-    # Full version with encoder + power monitoring (ENABLED - ADC1 configured!)
+    # Motor control test with encoder + power monitoring
     Core/Src/modules/motor/motor_control_with_encoder.cpp
     Core/Src/Motor/QuadratureEncoder.cpp
     Core/Src/Motor/PowerMonitor.cpp
