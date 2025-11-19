@@ -13,6 +13,9 @@
 // C linkage for functions called from C code
 extern "C" {
 
+// Declare motor control test function
+void motor_control_with_encoder_main(void);       // Full version with encoder + power monitoring
+
 /**
  * @brief C++ application entry point called from main.c
  * 
@@ -24,8 +27,8 @@ void cpp_main(void) {
     printf("System Clock: %lu Hz\r\n", SystemCoreClock);
     printf("UART Baud Rate: 115200\r\n\r\n");
     
-    // Start motor control (this function never returns)
-    motor_control_main();
+    // Run motor control test with encoder feedback and power monitoring
+    motor_control_with_encoder_main();
 }
 
 } // extern "C"

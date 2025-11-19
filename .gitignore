@@ -80,3 +80,6 @@ Drivers/CMSIS/DSP/Source/
 stlink-config.txt
 prevent-driver-update.md
 
+reference/
+scripts/
+
